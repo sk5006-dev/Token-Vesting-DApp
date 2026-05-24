@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, useChainId, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { TokenVestingABI } from "@/abis/TokenVesting";
@@ -201,7 +201,7 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
 
   // User details insights
   const walletHealthScore = isConnected ? 98 : 85;
-  const riskIndicator = schedules.some(s => s.revocable && !s.revoked) ? "medium" : "low";
+  const riskIndicator: "low" | "medium" | "high" = schedules.some(s => s.revocable && !s.revoked) ? "medium" : "low";
 
   // Dynamic contract address fetch
   const getContractAddress = (): `0x${string}` => {
@@ -596,11 +596,11 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
     setNotifications((prev) => [notification, ...prev]);
   };
 
-  const markAllNotificationsRead = () => {
+  const markAllNotificationsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  }, []);
 
-  const exportData = () => {
+  const exportData = useCallback(() => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(schedules, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
@@ -608,31 +608,47 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  };
+  }, [schedules]);
+
+  const providerValue = useMemo(() => ({
+    schedules,
+    logs,
+    notifications,
+    isDemoMode,
+    setIsDemoMode,
+    activeTab,
+    setActiveTab,
+    viewingScheduleId,
+    setViewingScheduleId,
+    walletHealthScore,
+    riskIndicator,
+    createSchedule,
+    claimTokens,
+    claimAllTokens,
+    revokeSchedule,
+    emergencyWithdraw,
+    markAllNotificationsRead,
+    exportData,
+  }), [
+    schedules,
+    logs,
+    notifications,
+    isDemoMode,
+    activeTab,
+    viewingScheduleId,
+    walletHealthScore,
+    riskIndicator,
+    createSchedule,
+    claimTokens,
+    claimAllTokens,
+    revokeSchedule,
+    emergencyWithdraw,
+    markAllNotificationsRead,
+    exportData,
+  ]);
 
   return (
-    <VestingContext.Provider
-      value={{
-        schedules,
-        logs,
-        notifications,
-        isDemoMode,
-        setIsDemoMode,
-        activeTab,
-        setActiveTab,
-        viewingScheduleId,
-        setViewingScheduleId,
-        walletHealthScore,
-        riskIndicator,
-        createSchedule,
-        claimTokens,
-        claimAllTokens,
-        revokeSchedule,
-        emergencyWithdraw,
-        markAllNotificationsRead,
-        exportData,
-      }}
-    >
+    <VestingContext.Provider value={providerValue}>
       {children}
     </VestingContext.Provider>
   );
