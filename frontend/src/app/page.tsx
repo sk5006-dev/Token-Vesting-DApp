@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import React, { useState, useEffect } from "react";
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { motion, AnimatePresence } from "framer-motion";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import {
   Wallet,
   LayoutDashboard,
@@ -21,23 +22,18 @@ import {
   ArrowUpRight,
   Sparkles,
   Info,
-  Clock,
   LogOut,
   PlusCircle,
-  HelpCircle,
-  CheckCircle2,
   AlertCircle,
   X,
   Search,
-  Filter,
   Download,
   Terminal,
   Activity,
-  History,
-  Compass,
-  FileCode,
-  Flame,
-  MousePointerClick
+  ChevronDown,
+  RefreshCw,
+  Copy,
+  Check
 } from "lucide-react";
 import { useVesting } from "@/context/VestingContext";
 import {
@@ -54,9 +50,15 @@ import {
 } from "recharts";
 
 export default function Home() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const { chains, switchChain } = useSwitchChain();
+  
+  // Fetch real balance of connected account
+  const { data: balanceData } = useBalance({
+    address: address,
+  });
 
   const {
     schedules,
@@ -84,6 +86,18 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check if connected chain is supported
+  const isChainSupported = chain ? chains.some((c) => c.id === chain.id) : true;
+
+  // Copy address state
+  const [copied, setCopied] = useState(false);
+  const copyAddress = () => {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Mouse Reactive Gradients
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -259,17 +273,9 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-4">
-              {isConnected ? (
-                <button
-                  onClick={() => {
-                    setIsDemoMode(false);
-                    setActiveTab("dashboard");
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-medium hover:bg-zinc-800 transition duration-200"
-                >
-                  Enter Console
-                </button>
-              ) : (
+              <ConnectButton />
+              
+              {!isConnected && (
                 <button
                   onClick={() => {
                     setIsDemoMode(true);
@@ -305,24 +311,12 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                {isConnected ? (
-                  <button
-                    onClick={() => setActiveTab("dashboard")}
-                    className="px-8 py-4 rounded-xl bg-white text-zinc-950 font-bold hover:bg-zinc-200 transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-white/10"
-                  >
-                    Launch Application <ArrowRight className="w-5 h-5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      connect({ connector: injected() });
-                      setActiveTab("dashboard");
-                    }}
-                    className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:opacity-95 transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 cursor-pointer"
-                  >
-                    Connect Web3 Wallet <Wallet className="w-5 h-5" />
-                  </button>
-                )}
+                <button
+                  onClick={() => setActiveTab("dashboard")}
+                  className="px-8 py-4 rounded-xl bg-white text-zinc-950 font-bold hover:bg-zinc-200 transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-white/10"
+                >
+                  Launch Application <ArrowRight className="w-5 h-5" />
+                </button>
                 
                 <button
                   onClick={() => {
@@ -352,7 +346,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Premium App Preview Image / Card Stack */}
+            {/* Premium App Preview Card Stack */}
             <div className="lg:col-span-5 relative flex justify-center">
               <div className="w-full max-w-[420px] aspect-[4/5] glass-accent rounded-3xl p-8 flex flex-col justify-between glow-purple relative overflow-hidden animate-float">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent pointer-events-none" />
@@ -397,6 +391,7 @@ export default function Home() {
       {/* Interactive Console Console Wrapper */}
       {activeTab !== "landing" && (
         <div className="flex-1 flex overflow-hidden z-10">
+          
           {/* Dashboard Left Sidebar */}
           <aside className="w-64 border-r border-zinc-900/60 bg-[#050505]/70 backdrop-blur-xl flex flex-col p-6 gap-8 justify-between">
             <div className="flex flex-col gap-8">
@@ -451,7 +446,7 @@ export default function Home() {
               </nav>
             </div>
 
-            {/* Sidebar Bottom Wallet Section */}
+            {/* Sidebar Bottom Wallet Section with Responsive Integration */}
             <div className="flex flex-col gap-4">
               {isDemoMode ? (
                 <div className="p-4 rounded-2xl glass-accent flex flex-col gap-2">
@@ -464,27 +459,39 @@ export default function Home() {
                   </p>
                   <button
                     onClick={() => {
+                      setIsDemoMode(false);
                       connect({ connector: injected() });
                     }}
-                    className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition"
+                    className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition"
                   >
                     Connect Wallet
                   </button>
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl glass flex flex-col gap-3">
+                <div className="p-4 rounded-2xl glass border border-zinc-800 flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Active Connected</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2.5 h-2.5 rounded-full ${isChainSupported ? "bg-emerald-500 animate-pulse" : "bg-red-500 animate-ping"}`} />
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest truncate max-w-[80px]">
+                        {chain?.name || "Unsupported"}
+                      </span>
+                    </div>
                     <button onClick={() => disconnect()} className="text-zinc-500 hover:text-red-400 transition">
                       <LogOut className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-mono text-purple-400 font-bold block truncate">
-                      {address}
-                    </span>
+                  
+                  <div className="flex flex-col gap-1 border-t border-zinc-900 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-mono text-purple-400 font-bold block truncate max-w-[120px]">
+                        {address}
+                      </span>
+                      <button onClick={copyAddress} className="text-zinc-500 hover:text-white transition">
+                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                     <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
-                      Mainnet Wallet
+                      Balance: {balanceData ? `${parseFloat(balanceData.formatted).toFixed(4)} ${balanceData.symbol}` : "0 ETH"}
                     </span>
                   </div>
                 </div>
@@ -500,6 +507,30 @@ export default function Home() {
           {/* Main Dashboard Screen Viewports */}
           <main className="flex-1 flex flex-col overflow-y-auto px-10 py-8 relative">
             
+            {/* Unsupported Network Banner */}
+            {!isDemoMode && !isChainSupported && (
+              <div className="p-4 rounded-2xl bg-red-950/20 border border-red-500/20 text-red-400 flex items-center justify-between mb-8 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <div className="flex flex-col text-sm">
+                    <span className="font-extrabold text-white">Unsupported Network Detected</span>
+                    <span className="text-xs text-zinc-400">Please switch to Sepolia, Optimism, or Localhost to proceed.</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {chains.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => switchChain?.({ chainId: c.id })}
+                      className="px-3.5 py-2 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/30 text-xs font-bold text-white transition"
+                    >
+                      Switch to {c.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 1. Overview Console (Dashboard) */}
             {activeTab === "dashboard" && (
               <div className="flex flex-col gap-8">
@@ -513,13 +544,18 @@ export default function Home() {
                       Automated institutional locked capital metrics.
                     </span>
                   </div>
+                  
                   <div className="flex items-center gap-3">
+                    {/* Integrated Connect button directly in Dashboard Navbar */}
+                    <ConnectButton />
+                    
                     <button
                       onClick={exportData}
                       className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-bold text-zinc-300 flex items-center gap-2 transition duration-200"
                     >
                       <Download className="w-4 h-4" /> Export Config
                     </button>
+                    
                     <button
                       onClick={() => setActiveTab("claim")}
                       className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-xs font-extrabold text-white flex items-center gap-2 transition duration-200"
@@ -544,7 +580,7 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => setActiveTab("analytics")}
-                    className="px-4 py-2.5 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 border border-purple-500/20 text-xs font-bold tracking-wider uppercase shrink-0 transition"
+                    className="px-4 py-2.5 rounded-xl bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 border border-purple-500/20 text-xs font-bold tracking-wider uppercase shrink-0 transition animate-pulse"
                   >
                     Open Forecasts
                   </button>
@@ -705,9 +741,12 @@ export default function Home() {
             {/* 2. Claim Lockups */}
             {activeTab === "claim" && (
               <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-3xl font-extrabold tracking-tight text-white">Claim Lockups</h2>
-                  <span className="text-sm text-zinc-400">Release active vested capital directly to your authenticated Web3 address.</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Claim Lockups</h2>
+                    <span className="text-sm text-zinc-400">Release active vested capital directly to your authenticated Web3 address.</span>
+                  </div>
+                  <ConnectButton />
                 </div>
 
                 {/* Schedules grid for claim */}
@@ -786,7 +825,7 @@ export default function Home() {
                                 placeholder={`Max claim: ${claimable.toLocaleString()}`}
                                 value={claimAmountInput[schedule.id] || ""}
                                 onChange={(e) => setClaimAmountInput({ ...claimAmountInput, [schedule.id]: e.target.value })}
-                                className="flex-1 px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                                className="flex-1 px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                                 max={claimable}
                               />
                               <button
@@ -817,9 +856,12 @@ export default function Home() {
             {/* 3. Admin Controller */}
             {activeTab === "admin" && (
               <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-3xl font-extrabold tracking-tight text-white">Admin Controller</h2>
-                  <span className="text-sm text-zinc-400">Configure new vesting schedules and manage emergency contract withdrawals.</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Admin Controller</h2>
+                    <span className="text-sm text-zinc-400">Configure new vesting schedules and manage emergency contract withdrawals.</span>
+                  </div>
+                  <ConnectButton />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -835,7 +877,7 @@ export default function Home() {
                           placeholder="0x..."
                           value={adminBeneficiary}
                           onChange={(e) => setAdminBeneficiary(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -845,7 +887,7 @@ export default function Home() {
                           placeholder="e.g. 100000"
                           value={adminAmount}
                           onChange={(e) => setAdminAmount(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -855,7 +897,7 @@ export default function Home() {
                           placeholder="e.g. AET"
                           value={adminTokenSymbol}
                           onChange={(e) => setAdminTokenSymbol(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -865,7 +907,7 @@ export default function Home() {
                           placeholder="0x..."
                           value={adminTokenAddress}
                           onChange={(e) => setAdminTokenAddress(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -875,7 +917,7 @@ export default function Home() {
                           placeholder="e.g. 31536000 (1 year)"
                           value={adminDuration}
                           onChange={(e) => setAdminDuration(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -885,7 +927,7 @@ export default function Home() {
                           placeholder="e.g. 2592000 (30 days)"
                           value={adminCliff}
                           onChange={(e) => setAdminCliff(e.target.value)}
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                     </div>
@@ -896,9 +938,9 @@ export default function Home() {
                         checked={adminRevocable}
                         onChange={(e) => setAdminRevocable(e.target.checked)}
                         className="w-5 h-5 accent-purple-500 cursor-pointer"
-                        id="revocable-check"
+                        id="admin-revocable"
                       />
-                      <label htmlFor="revocable-check" className="text-xs font-semibold text-zinc-300 cursor-pointer select-none">
+                      <label htmlFor="admin-revocable" className="text-xs font-semibold text-zinc-300 cursor-pointer select-none">
                         Revocable Schedule (Owner retains right to cancel lockups and recover remaining unvested tokens)
                       </label>
                     </div>
@@ -943,7 +985,7 @@ export default function Home() {
                         <input
                           type="text"
                           placeholder="0x..."
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -951,7 +993,7 @@ export default function Home() {
                         <input
                           type="number"
                           placeholder="e.g. 5000"
-                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white"
+                          className="px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-white font-semibold"
                         />
                       </div>
 
@@ -999,9 +1041,12 @@ export default function Home() {
             {/* 4. Forecast Analytics */}
             {activeTab === "analytics" && (
               <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-3xl font-extrabold tracking-tight text-white">Forecast Analytics</h2>
-                  <span className="text-sm text-zinc-400">Unlock simulations, predictive insights, and deep-dive distribution allocations.</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Forecast Analytics</h2>
+                    <span className="text-sm text-zinc-400">Unlock simulations, predictive insights, and deep-dive distribution allocations.</span>
+                  </div>
+                  <ConnectButton />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1063,9 +1108,12 @@ export default function Home() {
             {/* 5. Unlock Timeline */}
             {activeTab === "timeline" && (
               <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-3xl font-extrabold tracking-tight text-white">Unlock Timeline</h2>
-                  <span className="text-sm text-zinc-400">Chronological vertical mapping of lockup milestones and cliffs.</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Unlock Timeline</h2>
+                    <span className="text-sm text-zinc-400">Chronological vertical mapping of lockup milestones and cliffs.</span>
+                  </div>
+                  <ConnectButton />
                 </div>
 
                 {/* Vertical interactive timeline */}
@@ -1107,12 +1155,15 @@ export default function Home() {
                     <h2 className="text-3xl font-extrabold tracking-tight text-white">Alert Center</h2>
                     <span className="text-sm text-zinc-400">Capital releases, contract updates, and system notifications logs.</span>
                   </div>
-                  <button
-                    onClick={markAllNotificationsRead}
-                    className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-bold text-zinc-300 transition"
-                  >
-                    Mark All Read
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <ConnectButton />
+                    <button
+                      onClick={markAllNotificationsRead}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-bold text-zinc-300 transition"
+                    >
+                      Mark All Read
+                    </button>
+                  </div>
                 </div>
 
                 <div className="max-w-3xl flex flex-col gap-4">
@@ -1125,7 +1176,7 @@ export default function Home() {
                         n.type === "warning" ? "bg-amber-500/10 text-amber-400" :
                         "bg-blue-500/10 text-blue-400"
                       }`}>
-                        {n.type === "success" ? <CheckCircle2 className="w-5 h-5" /> :
+                        {n.type === "success" ? <Check className="w-5 h-5" /> :
                          n.type === "warning" ? <AlertCircle className="w-5 h-5" /> :
                          <Info className="w-5 h-5" />}
                       </div>
@@ -1146,9 +1197,12 @@ export default function Home() {
             {/* 7. Wallet Insights (Profile) */}
             {activeTab === "profile" && (
               <div className="flex flex-col gap-8">
-                <div className="flex flex-col gap-1">
-                  <h2 className="text-3xl font-extrabold tracking-tight text-white">Wallet Insights</h2>
-                  <span className="text-sm text-zinc-400">Security audit reporting and cross-wallet allocation insights.</span>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col gap-1">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Wallet Insights</h2>
+                    <span className="text-sm text-zinc-400">Security audit reporting and cross-wallet allocation insights.</span>
+                  </div>
+                  <ConnectButton />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
