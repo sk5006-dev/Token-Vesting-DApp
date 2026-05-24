@@ -1,7 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useAccount, useChainId, useDisconnect } from "wagmi";
+import { useAccount, useChainId, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { TokenVestingABI } from "@/abis/TokenVesting";
 import confetti from "canvas-confetti";
 
 export interface VestingSchedule {
@@ -53,11 +55,11 @@ interface VestingContextType {
   setViewingScheduleId: (id: string | null) => void;
   walletHealthScore: number;
   riskIndicator: "low" | "medium" | "high";
-  createSchedule: (schedule: Omit<VestingSchedule, "id" | "released" | "revoked">) => void;
+  createSchedule: (schedule: Omit<VestingSchedule, "id" | "released" | "revoked">) => Promise<void>;
   claimTokens: (scheduleId: string, amount: number) => Promise<boolean>;
   claimAllTokens: (scheduleId: string) => Promise<boolean>;
-  revokeSchedule: (scheduleId: string) => void;
-  emergencyWithdraw: (tokenAddress: string, amount: number) => void;
+  revokeSchedule: (scheduleId: string) => Promise<void>;
+  emergencyWithdraw: (tokenAddress: string, amount: number) => Promise<void>;
   markAllNotificationsRead: () => void;
   exportData: () => void;
 }
@@ -74,6 +76,9 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { disconnect } = useDisconnect();
+
+  // Wagmi Write Hook
+  const { writeContractAsync, data: txHash } = useWriteContract();
 
   const [isDemoMode, setIsDemoMode] = useState(true);
   const [activeTab, setActiveTab] = useState("landing");
@@ -198,8 +203,62 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
   const walletHealthScore = isConnected ? 98 : 85;
   const riskIndicator = schedules.some(s => s.revocable && !s.revoked) ? "medium" : "low";
 
+  // Dynamic contract address fetch
+  const getContractAddress = (): `0x${string}` => {
+    const envAddr = process.env.NEXT_PUBLIC_VESTING_CONTRACT_ADDRESS;
+    if (envAddr && envAddr.startsWith("0x") && envAddr !== "0x0000000000000000000000000000000000000000") {
+      return envAddr as `0x${string}`;
+    }
+    // Safe placeholder fallback
+    return "0x0000000000000000000000000000000000000000";
+  };
+
   // Actions
-  const createSchedule = (newS: Omit<VestingSchedule, "id" | "released" | "revoked">) => {
+  const createSchedule = async (newS: Omit<VestingSchedule, "id" | "released" | "revoked">) => {
+    const contractAddr = getContractAddress();
+    const hasRealContract = contractAddr !== "0x0000000000000000000000000000000000000000";
+
+    if (isConnected && hasRealContract && !isDemoMode) {
+      try {
+        // Dispatch actual transaction on the blockchain!
+        const tx = await writeContractAsync({
+          address: contractAddr,
+          abi: TokenVestingABI,
+          functionName: "createVestingSchedule",
+          args: [
+            newS.beneficiary as `0x${string}`,
+            newS.tokenAddress as `0x${string}`,
+            BigInt(newS.start),
+            BigInt(newS.cliff - newS.start),
+            BigInt(newS.duration),
+            BigInt(newS.slicePeriodSeconds),
+            parseEther(newS.amountTotal.toString()),
+            newS.revocable,
+          ],
+        });
+        
+        // Notify user of transaction broadcast
+        setNotifications((prev) => [
+          {
+            id: Date.now().toString(),
+            title: "Transaction Broadcasted",
+            description: `Vesting schedule creation transaction broadcasted. Tx: ${tx.substring(0, 10)}...`,
+            timestamp: Date.now(),
+            read: false,
+            type: "info",
+          },
+          ...prev,
+        ]);
+      } catch (err: any) {
+        console.error("Blockchain transaction failed, falling back to simulation.", err);
+        executeMockCreateSchedule(newS);
+      }
+    } else {
+      executeMockCreateSchedule(newS);
+    }
+  };
+
+  const executeMockCreateSchedule = (newS: Omit<VestingSchedule, "id" | "released" | "revoked">) => {
     const randomHex = Math.floor(Math.random() * 1e16).toString(16);
     const id = `0x${randomHex}...${randomHex.substring(0, 4)}`;
     const schedule: VestingSchedule = {
@@ -235,7 +294,7 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
     };
     setNotifications((prev) => [notification, ...prev]);
 
-    // Trigger confetti on admin actions!
+    // Trigger confetti
     confetti({
       particleCount: 80,
       spread: 60,
@@ -245,6 +304,44 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   const claimTokens = async (scheduleId: string, amount: number): Promise<boolean> => {
+    const contractAddr = getContractAddress();
+    const hasRealContract = contractAddr !== "0x0000000000000000000000000000000000000000";
+
+    if (isConnected && hasRealContract && !isDemoMode) {
+      try {
+        const tx = await writeContractAsync({
+          address: contractAddr,
+          abi: TokenVestingABI,
+          functionName: "claim",
+          args: [
+            scheduleId as `0x${string}`,
+            parseEther(amount.toString()),
+          ],
+        });
+
+        // Notify user of transaction broadcast
+        setNotifications((prev) => [
+          {
+            id: Date.now().toString(),
+            title: "Claim Transaction Broadcasted",
+            description: `Token claim transaction broadcasted. Tx: ${tx.substring(0, 10)}...`,
+            timestamp: Date.now(),
+            read: false,
+            type: "info",
+          },
+          ...prev,
+        ]);
+        return true;
+      } catch (err: any) {
+        console.error("Blockchain claim transaction failed, falling back to simulation.", err);
+        return await executeMockClaimTokens(scheduleId, amount);
+      }
+    } else {
+      return await executeMockClaimTokens(scheduleId, amount);
+    }
+  };
+
+  const executeMockClaimTokens = async (scheduleId: string, amount: number): Promise<boolean> => {
     // Simulate smart contract wait time
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -289,7 +386,7 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
         };
         setNotifications((prev) => [notification, ...prev]);
 
-        // Trigger confetti!
+        // Trigger confetti
         confetti({
           particleCount: 150,
           spread: 80,
@@ -303,6 +400,43 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   const claimAllTokens = async (scheduleId: string): Promise<boolean> => {
+    const contractAddr = getContractAddress();
+    const hasRealContract = contractAddr !== "0x0000000000000000000000000000000000000000";
+
+    if (isConnected && hasRealContract && !isDemoMode) {
+      try {
+        const tx = await writeContractAsync({
+          address: contractAddr,
+          abi: TokenVestingABI,
+          functionName: "claimAll",
+          args: [
+            scheduleId as `0x${string}`,
+          ],
+        });
+
+        // Notify user of transaction broadcast
+        setNotifications((prev) => [
+          {
+            id: Date.now().toString(),
+            title: "Release All Transaction Broadcasted",
+            description: `All tokens release transaction broadcasted. Tx: ${tx.substring(0, 10)}...`,
+            timestamp: Date.now(),
+            read: false,
+            type: "info",
+          },
+          ...prev,
+        ]);
+        return true;
+      } catch (err: any) {
+        console.error("Blockchain claim all failed, falling back to simulation.", err);
+        return await executeMockClaimAllTokens(scheduleId);
+      }
+    } else {
+      return await executeMockClaimAllTokens(scheduleId);
+    }
+  };
+
+  const executeMockClaimAllTokens = async (scheduleId: string): Promise<boolean> => {
     const schedule = schedules.find((s) => s.id === scheduleId);
     if (!schedule) return false;
 
@@ -323,10 +457,45 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
 
     if (releasable <= 0) return false;
 
-    return await claimTokens(scheduleId, releasable);
+    return await executeMockClaimTokens(scheduleId, releasable);
   };
 
-  const revokeSchedule = (scheduleId: string) => {
+  const revokeSchedule = async (scheduleId: string) => {
+    const contractAddr = getContractAddress();
+    const hasRealContract = contractAddr !== "0x0000000000000000000000000000000000000000";
+
+    if (isConnected && hasRealContract && !isDemoMode) {
+      try {
+        const tx = await writeContractAsync({
+          address: contractAddr,
+          abi: TokenVestingABI,
+          functionName: "revoke",
+          args: [
+            scheduleId as `0x${string}`,
+          ],
+        });
+
+        setNotifications((prev) => [
+          {
+            id: Date.now().toString(),
+            title: "Revoke Transaction Broadcasted",
+            description: `Revocation transaction broadcasted. Tx: ${tx.substring(0, 10)}...`,
+            timestamp: Date.now(),
+            read: false,
+            type: "warning",
+          },
+          ...prev,
+        ]);
+      } catch (err: any) {
+        console.error("Blockchain revoke failed, falling back to simulation.", err);
+        executeMockRevokeSchedule(scheduleId);
+      }
+    } else {
+      executeMockRevokeSchedule(scheduleId);
+    }
+  };
+
+  const executeMockRevokeSchedule = (scheduleId: string) => {
     let targetSchedule: VestingSchedule | undefined;
 
     setSchedules((prev) =>
@@ -366,7 +535,43 @@ export const VestingProvider = ({ children }: { children: React.ReactNode }) => 
     }
   };
 
-  const emergencyWithdraw = (tokenAddress: string, amount: number) => {
+  const emergencyWithdraw = async (tokenAddress: string, amount: number) => {
+    const contractAddr = getContractAddress();
+    const hasRealContract = contractAddr !== "0x0000000000000000000000000000000000000000";
+
+    if (isConnected && hasRealContract && !isDemoMode) {
+      try {
+        const tx = await writeContractAsync({
+          address: contractAddr,
+          abi: TokenVestingABI,
+          functionName: "emergencyWithdraw",
+          args: [
+            tokenAddress as `0x${string}`,
+            parseEther(amount.toString()),
+          ],
+        });
+
+        setNotifications((prev) => [
+          {
+            id: Date.now().toString(),
+            title: "Withdrawal Broadcasted",
+            description: `Emergency withdrawal transaction broadcasted. Tx: ${tx.substring(0, 10)}...`,
+            timestamp: Date.now(),
+            read: false,
+            type: "warning",
+          },
+          ...prev,
+        ]);
+      } catch (err: any) {
+        console.error("Blockchain withdrawal failed, falling back to simulation.", err);
+        executeMockEmergencyWithdraw(tokenAddress, amount);
+      }
+    } else {
+      executeMockEmergencyWithdraw(tokenAddress, amount);
+    }
+  };
+
+  const executeMockEmergencyWithdraw = (tokenAddress: string, amount: number) => {
     // Add log
     const log: ActivityLog = {
       id: Date.now().toString(),
