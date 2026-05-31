@@ -1,6 +1,16 @@
 import hardhatEthers from "@nomicfoundation/hardhat-ethers";
 import hardhatToolboxMochaEthersPlugin from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
 import { configVariable, defineConfig } from "hardhat/config";
+import process from "node:process";
+
+try {
+  process.loadEnvFile(".env.local");
+} catch (e) {
+  try {
+    process.loadEnvFile(".env");
+  } catch (err) {}
+}
+
 
 export default defineConfig({
   plugins: [
