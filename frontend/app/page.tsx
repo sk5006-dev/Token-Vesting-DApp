@@ -33,7 +33,8 @@ import {
   ChevronDown,
   RefreshCw,
   Copy,
-  Check
+  Check,
+  Menu
 } from "lucide-react";
 import { useVesting } from "@/context/VestingContext";
 import {
@@ -51,6 +52,19 @@ import {
 
 export default function Home() {
   const { isConnected, address, chain } = useAccount();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduceMotion(mediaQuery.matches || window.innerWidth < 768);
+    
+    const listener = (e: MediaQueryListEvent) => {
+      setReduceMotion(e.matches || window.innerWidth < 768);
+    };
+    mediaQuery.addEventListener("change", listener);
+    return () => mediaQuery.removeEventListener("change", listener);
+  }, []);
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const { chains, switchChain } = useSwitchChain();
@@ -393,7 +407,7 @@ export default function Home() {
         <div className="flex-1 flex overflow-hidden z-10">
           
           {/* Dashboard Left Sidebar */}
-          <aside className="w-64 border-r border-zinc-900/60 bg-[#050505]/70 backdrop-blur-xl flex flex-col p-6 gap-8 justify-between">
+          <aside className="hidden lg:flex w-64 border-r border-zinc-900/60 bg-[#050505]/70 backdrop-blur-xl flex-col p-6 gap-8 justify-between shrink-0">
             <div className="flex flex-col gap-8">
               {/* App Brand */}
               <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab("landing")}>
@@ -505,7 +519,26 @@ export default function Home() {
           </aside>
 
           {/* Main Dashboard Screen Viewports */}
-          <main className="flex-1 flex flex-col overflow-y-auto px-10 py-8 relative">
+          <main className="flex-1 flex flex-col overflow-y-auto px-4 py-6 md:px-10 md:py-8 relative">
+            
+            {/* Mobile Header Bar */}
+            <header className="lg:hidden flex items-center justify-between px-4 py-4 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-900/60 sticky top-0 z-30 w-full mb-6 rounded-2xl glass">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab("landing")}>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-600/20">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-bold text-white tracking-tight">AetherVesting</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <ConnectButton />
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              </div>
+            </header>
             
             {/* Unsupported Network Banner */}
             {!isDemoMode && !isChainSupported && (
@@ -535,32 +568,34 @@ export default function Home() {
             {activeTab === "dashboard" && (
               <div className="flex flex-col gap-8">
                 {/* AI Portfolio Overview Section */}
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
                       Overview Console
                     </h2>
-                    <span className="text-sm text-zinc-400">
+                    <span className="text-xs sm:text-sm text-zinc-400">
                       Automated institutional locked capital metrics.
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {/* Integrated Connect button directly in Dashboard Navbar */}
-                    <ConnectButton />
+                    <div className="hidden lg:block">
+                      <ConnectButton />
+                    </div>
                     
                     <button
                       onClick={exportData}
-                      className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-bold text-zinc-300 flex items-center gap-2 transition duration-200"
+                      className="px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-bold text-zinc-300 flex items-center gap-1.5 transition duration-200 cursor-pointer"
                     >
-                      <Download className="w-4 h-4" /> Export Config
+                      <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Config</span> Export
                     </button>
                     
                     <button
                       onClick={() => setActiveTab("claim")}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-xs font-extrabold text-white flex items-center gap-2 transition duration-200"
+                      className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-[11px] font-extrabold text-white flex items-center gap-1.5 transition duration-200 cursor-pointer"
                     >
-                      <Coins className="w-4 h-4" /> Quick Release
+                      <Coins className="w-3.5 h-3.5" /> Quick Release
                     </button>
                   </div>
                 </div>
@@ -695,9 +730,9 @@ export default function Home() {
 
                   <div className="flex flex-col gap-3">
                     {logs.slice(0, 3).map((log) => (
-                      <div key={log.id} className="p-4 rounded-2xl border border-zinc-900 bg-zinc-950/20 flex items-center justify-between text-sm">
+                      <div key={log.id} className="p-4 rounded-2xl border border-zinc-900 bg-zinc-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-sm">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center ${
+                          <div className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center shrink-0 ${
                             log.type === "claim" ? "bg-emerald-500/10 text-emerald-400" :
                             log.type === "create" ? "bg-purple-500/10 text-purple-400" :
                             "bg-amber-500/10 text-amber-400"
@@ -706,19 +741,19 @@ export default function Home() {
                              log.type === "create" ? <PlusCircle className="w-4 h-4" /> :
                              <AlertCircle className="w-4 h-4" />}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-white capitalize">{log.type} Transaction</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-white capitalize truncate">{log.type} Transaction</span>
                             <span className="text-xs text-zinc-500">
                               {new Date(log.timestamp).toLocaleDateString()} at {new Date(log.timestamp).toLocaleTimeString()}
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-8">
-                          <div className="flex flex-col text-right">
-                            <span className="font-extrabold text-white">
+                        <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 w-full sm:w-auto border-t sm:border-t-0 border-zinc-900/60 pt-3 sm:pt-0">
+                          <div className="flex flex-col text-left sm:text-right min-w-0">
+                            <span className="font-extrabold text-white truncate">
                               {log.type === "claim" ? "-" : "+"} {log.amount.toLocaleString()} {log.tokenSymbol}
                             </span>
-                            <span className="text-xs text-zinc-500 font-mono tracking-tighter truncate max-w-[120px]">
+                            <span className="text-xs text-zinc-500 font-mono tracking-tighter truncate max-w-[120px] sm:max-w-none">
                               {log.txHash}
                             </span>
                           </div>
@@ -726,7 +761,7 @@ export default function Home() {
                             href={`https://etherscan.io/tx/${log.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                            className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition shrink-0"
                           >
                             <ArrowUpRight className="w-4.5 h-4.5" />
                           </a>
@@ -741,12 +776,14 @@ export default function Home() {
             {/* 2. Claim Lockups */}
             {activeTab === "claim" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Claim Lockups</h2>
-                    <span className="text-sm text-zinc-400">Release active vested capital directly to your authenticated Web3 address.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Claim Lockups</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Release active vested capital directly to your authenticated Web3 address.</span>
                   </div>
-                  <ConnectButton />
+                  <div className="hidden lg:block">
+                    <ConnectButton />
+                  </div>
                 </div>
 
                 {/* Schedules grid for claim */}
@@ -856,12 +893,14 @@ export default function Home() {
             {/* 3. Admin Controller */}
             {activeTab === "admin" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Admin Controller</h2>
-                    <span className="text-sm text-zinc-400">Configure new vesting schedules and manage emergency contract withdrawals.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Admin Controller</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Configure new vesting schedules and manage emergency contract withdrawals.</span>
                   </div>
-                  <ConnectButton />
+                  <div className="hidden lg:block">
+                    <ConnectButton />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1041,12 +1080,14 @@ export default function Home() {
             {/* 4. Forecast Analytics */}
             {activeTab === "analytics" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Forecast Analytics</h2>
-                    <span className="text-sm text-zinc-400">Unlock simulations, predictive insights, and deep-dive distribution allocations.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Forecast Analytics</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Unlock simulations, predictive insights, and deep-dive distribution allocations.</span>
                   </div>
-                  <ConnectButton />
+                  <div className="hidden lg:block">
+                    <ConnectButton />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1108,12 +1149,14 @@ export default function Home() {
             {/* 5. Unlock Timeline */}
             {activeTab === "timeline" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Unlock Timeline</h2>
-                    <span className="text-sm text-zinc-400">Chronological vertical mapping of lockup milestones and cliffs.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Unlock Timeline</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Chronological vertical mapping of lockup milestones and cliffs.</span>
                   </div>
-                  <ConnectButton />
+                  <div className="hidden lg:block">
+                    <ConnectButton />
+                  </div>
                 </div>
 
                 {/* Vertical interactive timeline */}
@@ -1150,16 +1193,18 @@ export default function Home() {
             {/* 6. Alert Center */}
             {activeTab === "notifications" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Alert Center</h2>
-                    <span className="text-sm text-zinc-400">Capital releases, contract updates, and system notifications logs.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Alert Center</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Capital releases, contract updates, and system notifications logs.</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <ConnectButton />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="hidden lg:block">
+                      <ConnectButton />
+                    </div>
                     <button
                       onClick={markAllNotificationsRead}
-                      className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-bold text-zinc-300 transition"
+                      className="px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-[11px] font-bold text-zinc-300 transition cursor-pointer"
                     >
                       Mark All Read
                     </button>
@@ -1197,12 +1242,14 @@ export default function Home() {
             {/* 7. Wallet Insights (Profile) */}
             {activeTab === "profile" && (
               <div className="flex flex-col gap-8">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <h2 className="text-3xl font-extrabold tracking-tight text-white">Wallet Insights</h2>
-                    <span className="text-sm text-zinc-400">Security audit reporting and cross-wallet allocation insights.</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Wallet Insights</h2>
+                    <span className="text-xs sm:text-sm text-zinc-400">Security audit reporting and cross-wallet allocation insights.</span>
                   </div>
-                  <ConnectButton />
+                  <div className="hidden lg:block">
+                    <ConnectButton />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1264,15 +1311,117 @@ export default function Home() {
         </div>
       )}
 
+      {/* Mobile Sidebar Navigation Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 flex lg:hidden bg-[#000000]/80 backdrop-blur-md animate-fade-in">
+            <motion.div
+              initial={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+              animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
+              transition={reduceMotion ? { duration: 0.1 } : { type: "spring", damping: 25, stiffness: 200 }}
+              className="w-72 bg-[#050505] border-r border-zinc-900 p-6 flex flex-col justify-between h-full relative"
+            >
+              <button 
+                onClick={() => setMobileMenuOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+
+              <div className="flex flex-col gap-8 mt-6">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setActiveTab("landing"); setMobileMenuOpen(false); }}>
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-600/20">
+                    <Sparkles className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <span className="text-md font-extrabold text-white">AetherVesting</span>
+                </div>
+
+                <nav className="flex flex-col gap-1">
+                  {[
+                    { id: "dashboard", label: "Overview Console", icon: LayoutDashboard },
+                    { id: "claim", label: "Claim Lockups", icon: Coins },
+                    { id: "admin", label: "Admin Controller", icon: ShieldCheck },
+                    { id: "analytics", label: "Forecast Analytics", icon: LineChart },
+                    { id: "timeline", label: "Unlock Timeline", icon: CalendarDays },
+                    { id: "notifications", label: "Alert Center", icon: Bell, count: notifications.filter(n => !n.read).length },
+                    { id: "profile", label: "Wallet Insights", icon: User },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    const isSelected = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setMobileMenuOpen(false);
+                          setViewingScheduleId(null);
+                        }}
+                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600/10 border border-purple-500/20 text-purple-400"
+                            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/40"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-5 h-5 ${isSelected ? "text-purple-400" : "text-zinc-400"}`} />
+                          <span>{item.label}</span>
+                        </div>
+                        {item.count && item.count > 0 ? (
+                          <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] flex items-center justify-center font-bold">
+                            {item.count}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Mobile Drawer Bottom Wallet Details */}
+              <div className="flex flex-col gap-4">
+                {isDemoMode ? (
+                  <div className="p-4 rounded-2xl glass-accent flex flex-col gap-2">
+                    <span className="text-xs font-bold text-purple-400 uppercase tracking-widest">Demo Sandbox</span>
+                    <p className="text-[11px] text-zinc-400">Running in simulated mode.</p>
+                    <button
+                      onClick={() => {
+                        setIsDemoMode(false);
+                        setMobileMenuOpen(false);
+                        connect({ connector: injected() });
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition cursor-pointer"
+                    >
+                      Connect Wallet
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl glass border border-zinc-800 flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-zinc-500 uppercase tracking-wider font-bold">Connected</span>
+                      <button onClick={() => { disconnect(); setMobileMenuOpen(false); }} className="text-red-400 font-bold hover:underline cursor-pointer">Disconnect</button>
+                    </div>
+                    <span className="text-xs font-mono text-purple-400 truncate">{address}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+            
+            {/* Drawer overlay background to close */}
+            <div className="flex-1" onClick={() => setMobileMenuOpen(false)} />
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Futuristic Command Palette Modal Dialog */}
       <AnimatePresence>
         {showCommandPalette && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-[#000000]/70 backdrop-blur-md">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.15 }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+              transition={{ duration: reduceMotion ? 0.05 : 0.15 }}
               className="w-full max-w-xl p-6 rounded-3xl glass border border-zinc-800 glow-purple flex flex-col gap-4"
             >
               <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
