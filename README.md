@@ -1,57 +1,209 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# Token Vesting DApp
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
+## About
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+The Token Vesting DApp is a blockchain-based decentralized application that allows administrators to lock ERC20 tokens for beneficiaries and release them gradually according to predefined vesting schedules.
 
-## Project Overview
+Users can securely connect their wallets, track vesting progress, and claim unlocked tokens directly through the web application. The system supports cliff periods, linear vesting, revocable schedules, and secure token distribution through audited smart contracts.
 
-This example project includes:
+---
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+## Live Demo
 
-## Usage
+Frontend Application:
+https://token-vesting-d-app.vercel.app/
 
-### Running Tests
+GitHub Repository:
+https://github.com/sk5006-dev/Token-Vesting-DApp
 
-To run all the tests in the project, execute the following command:
+---
 
-```shell
+## Smart Contract Details
+
+Network: Sepolia Testnet
+
+Contract Address:
+
+0xedfaA3F5B7F7d03daE3b80285F05Dde8a83198b8
+
+---
+
+## Features
+
+### Smart Contract Features
+
+* ERC20 Token Vesting
+* Cliff Period Support
+* Linear Vesting Schedule
+* Partial Token Claiming
+* Full Token Claiming
+* Revocable Vesting Schedules
+* Emergency Withdrawal Functionality
+* OpenZeppelin Security Standards
+* Reentrancy Protection
+
+### Frontend Features
+
+* Modern Next.js Dashboard
+* Wallet Integration
+* Real-Time Vesting Tracking
+* Analytics Dashboard
+* Admin Management Panel
+* Interactive Charts & Metrics
+* Mobile Responsive Design
+* Premium Web3 UI Experience
+
+### Wallet Support
+
+* MetaMask
+* WalletConnect
+* Coinbase Wallet
+
+---
+
+## Technology Stack
+
+### Frontend
+
+* Next.js
+* TypeScript
+* Tailwind CSS
+* Framer Motion
+* Recharts
+
+### Blockchain
+
+* Solidity
+* Hardhat
+* Ethers.js
+* Wagmi
+* RainbowKit
+* OpenZeppelin
+
+### Network
+
+* Ethereum Sepolia Testnet
+
+---
+
+## Project Architecture
+
+User Wallet
+↓
+Next.js Frontend
+↓
+Wagmi / Ethers.js
+↓
+Token Vesting Smart Contract
+↓
+Ethereum Sepolia Network
+
+---
+
+## Testing
+
+The project includes comprehensive testing coverage:
+
+* Smart Contract Unit Testing
+* Security Testing
+* Edge Case Testing
+* Access Control Validation
+* Reentrancy Protection Testing
+* Multi-User Isolation Testing
+
+Result:
+
+27 Passing Tests
+
+---
+
+## Security Features
+
+* Ownable Access Control
+* ReentrancyGuard Protection
+* Custom Error Handling
+* Input Validation
+* Emergency Recovery Mechanisms
+* Beneficiary Isolation
+
+---
+
+## Gas Optimization
+
+Implemented optimizations include:
+
+* Storage Slot Packing
+* SLOAD Caching
+* Memory Optimization
+* Efficient State Management
+
+Gas benchmark scripts are included in the repository.
+
+---
+
+## Local Setup
+
+Clone the repository:
+
+```bash
+git clone https://github.com/sk5006-dev/Token-Vesting-DApp.git
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Run smart contract tests:
+
+```bash
 npx hardhat test
 ```
 
-You can also selectively run the Solidity or `mocha` tests:
+---
 
-```shell
-npx hardhat test solidity
-npx hardhat test mocha
+## Environment Variables
+
+Create a .env.local file:
+
+```env
+NEXT_PUBLIC_VESTING_CONTRACT_ADDRESS=0xedfaA3F5B7F7d03daE3b80285F05Dde8a83198b8
+NEXT_PUBLIC_SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=YOUR_PROJECT_ID
 ```
 
-### Make a deployment to Sepolia
+---
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+## Deployment
 
-To run the deployment to a local chain:
+Frontend:
+Hosted on Vercel
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+Smart Contracts:
+Deployed on Ethereum Sepolia Testnet
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+---
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+## Future Enhancements
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+* Email Notifications
+* Vesting Calendar View
+* Multi-Token Support
+* Governance Integration
+* Cross-Chain Vesting
+* Advanced Analytics
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
+---
 
-After setting the variable, you can run the deployment with the Sepolia network:
+## Author
 
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
+Developed as a complete Web3 Token Vesting Management Platform using Solidity, Hardhat, Next.js, and Ethereum.
